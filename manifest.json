@@ -1,0 +1,29 @@
+﻿{
+  "manifest_version": 3,
+  "name": "ExtractTabsContent",
+  "version": "0.5",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "web_accessible_resources": [{
+    "resources": ["jspdf.min.js"],
+    "matches": ["<all_urls>"]
+  }]
+}

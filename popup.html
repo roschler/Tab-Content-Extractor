@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="popup-container">
+    <h2>Extract Tabs Content</h2>
+    <div class="controls">
+      <button id="select-all">Select All</button>
+      <button id="deselect-all">Deselect All</button>
+    </div>
+    <div id="tabs-list"></div>
+    <div class="actions">
+      <button id="copy">Copy</button>
+      <button id="save-txt">Save as TXT</button>
+      <button id="save-pdf">Save as PDF</button>
+      <button id="save-json">Save as JSON</button>
+      <button id="save-html">Save as HTML</button>
+    </div>
+    <div class="options">
+      <label for="separate-files">
+        <input type="checkbox" id="separate-files"> Save in separate files
+      </label>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
