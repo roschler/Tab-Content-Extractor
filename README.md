@@ -1,4 +1,10 @@
-# Tab Content Extractor
+# YouTube Video Summarizer (Chrome Local APIs)
+
+This project turns the Tab Content Extractor GitHub project into an extension that summarizes YouTube videos, with the help of the Chrome Local APIs.  To use the extension, you need the latest Canary Chrome build and to enable the correct Chrome experimental features.  If you are intent on using this extension, you should join the Chrome Early Preview Program.  Support for installation and usage issues will not be addressed here.  You can get that help from the Chrome Early Preview Program:
+
+https://developer.chrome.com/docs/ai/built-in
+
+# ORIGINAL PROJECT: Tab Content Extractor
 
 Tab Content Extractor is a browser extension for Chrome and Edge that allows users to extract and save content from multiple tabs in various formats.
 
