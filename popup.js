@@ -1,38 +1,61 @@
+/**
+ * This listener fires when the current page's DOM
+ *  content is loaded.
+ */
+/**
+ * This listener fires when the current page's DOM content is loaded.
+ */
 document.addEventListener('DOMContentLoaded', () => {
-  const tabsList = document.getElementById('tabs-list');
+  // Query the active tab to get its URL
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTab = tabs[0];
 
-  chrome.runtime.sendMessage({ action: "getTabs" }, (tabs) => {
-    tabs.forEach(tab => {
-      const tabItem = document.createElement('div');
-      tabItem.classList.add('tab-item');
-      tabItem.innerHTML = `<input type="checkbox" id="tab-${tab.id}" data-tab-id="${tab.id}"> <label for="tab-${tab.id}">${tab.title}</label>`;
-      tabsList.appendChild(tabItem);
+    // Check if the active tab's URL contains "youtube.com"
+    if (activeTab && activeTab.url.includes('youtube.com')) {
+      console.log('This is a YouTube page; specific code will not run.');
+      // Optional: Insert code here to handle YouTube-specific logic if needed
+      return;  // Exit if the active tab is a YouTube page
+    }
+
+    // -------------------- BEGIN: HANDLERS FOR NON-YOUTUBE PAGES ------------
+
+    const tabsList = document.getElementById('tabs-list');
+
+    chrome.runtime.sendMessage({ action: "getTabs" }, (tabs) => {
+      tabs.forEach(tab => {
+        const tabItem = document.createElement('div');
+        tabItem.classList.add('tab-item');
+        tabItem.innerHTML = `<input type="checkbox" id="tab-${tab.id}" data-tab-id="${tab.id}"> <label for="tab-${tab.id}">${tab.title}</label>`;
+        tabsList.appendChild(tabItem);
+      });
     });
+
+    document.getElementById('select-all').addEventListener('click', () => {
+      document.querySelectorAll('.tab-item input').forEach(input => input.checked = true);
+    });
+
+    document.getElementById('deselect-all').addEventListener('click', () => {
+      document.querySelectorAll('.tab-item input').forEach(input => input.checked = false);
+    });
+
+    document.getElementById('copy').addEventListener('click', () => handleAction('copy'));
+    document.getElementById('save-txt').addEventListener('click', () => handleAction('save-txt'));
+    document.getElementById('save-pdf').addEventListener('click', () => handleAction('save-pdf'));
+    document.getElementById('save-json').addEventListener('click', () => handleAction('save-json'));
+    document.getElementById('save-html').addEventListener('click', () => handleAction('save-html'));
+
+    const optionsDiv = document.querySelector('.options');
+    optionsDiv.innerHTML += `
+      <label for="only-links">
+        <input type="checkbox" id="only-links"> Links only
+        <span class="info-icon" title="Download only links to selected pages, without their content.">ⓘ</span>
+      </label>
+    `;
+
+    // ... other existing code ...
+
+    // -------------------- END  : HANDLERS FOR NON-YOUTUBE PAGES ------------
   });
-
-  document.getElementById('select-all').addEventListener('click', () => {
-    document.querySelectorAll('.tab-item input').forEach(input => input.checked = true);
-  });
-
-  document.getElementById('deselect-all').addEventListener('click', () => {
-    document.querySelectorAll('.tab-item input').forEach(input => input.checked = false);
-  });
-
-  document.getElementById('copy').addEventListener('click', () => handleAction('copy'));
-  document.getElementById('save-txt').addEventListener('click', () => handleAction('save-txt'));
-  document.getElementById('save-pdf').addEventListener('click', () => handleAction('save-pdf'));
-  document.getElementById('save-json').addEventListener('click', () => handleAction('save-json'));
-  document.getElementById('save-html').addEventListener('click', () => handleAction('save-html'));
-
-  const optionsDiv = document.querySelector('.options');
-  optionsDiv.innerHTML += `
-    <label for="only-links">
-      <input type="checkbox" id="only-links"> Links only
-      <span class="info-icon" title="Download only links to selected pages, without their content.">ⓘ</span>
-    </label>
-  `;
-
-  // ... pozostały istniejący kod ...
 });
 
 // Include jsPDF library
@@ -42,7 +65,7 @@ document.head.appendChild(script);
 
 function handleAction(action) {
   const selectedTabs = Array.from(document.querySelectorAll('.tab-item input:checked'))
-                            .map(input => parseInt(input.getAttribute('data-tab-id')));
+      .map(input => parseInt(input.getAttribute('data-tab-id')));
   const separateFiles = document.getElementById('separate-files').checked;
   const onlyLinks = document.getElementById('only-links').checked;
 
@@ -133,7 +156,7 @@ function saveToFile(contents, format, separateFiles, onlyLinks) {
         doc.setFontSize(10);
         doc.text("Website content:", 20, 80);
         doc.setFontSize(10);
-        const splitText = doc.splitTextToSize(content.content, 170); 
+        const splitText = doc.splitTextToSize(content.content, 170);
         doc.text(splitText, 20, 90);
       }
       doc.setFont('arial');
@@ -170,9 +193,9 @@ function saveToFile(contents, format, separateFiles, onlyLinks) {
   } else if (format === 'html') {
     if (separateFiles) {
       contents.forEach((content, index) => {
-        const htmlContent = onlyLinks 
-          ? `<h1>${content.title}</h1><p><a href="${content.url}">${content.url}</a></p>`
-          : `<h1>${content.title}</h1><p><a href="${content.url}">${content.url}</a></p><p>${content.content}</p>`;
+        const htmlContent = onlyLinks
+            ? `<h1>${content.title}</h1><p><a href="${content.url}">${content.url}</a></p>`
+            : `<h1>${content.title}</h1><p><a href="${content.url}">${content.url}</a></p><p>${content.content}</p>`;
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -182,10 +205,10 @@ function saveToFile(contents, format, separateFiles, onlyLinks) {
         URL.revokeObjectURL(url);
       });
     } else {
-      const allContents = contents.map(item => 
-        onlyLinks 
-          ? `<h1>${item.title}</h1><p><a href="${item.url}">${item.url}</a></p>`
-          : `<h1>${item.title}</h1><p><a href="${item.url}">${item.url}</a></p><p>${item.content}</p>`
+      const allContents = contents.map(item =>
+          onlyLinks
+              ? `<h1>${item.title}</h1><p><a href="${item.url}">${item.url}</a></p>`
+              : `<h1>${item.title}</h1><p><a href="${item.url}">${item.url}</a></p><p>${item.content}</p>`
       ).join('<hr>');
       const blob = new Blob([allContents], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
