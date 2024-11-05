@@ -4,6 +4,11 @@ This project turns the Tab Content Extractor GitHub project into an extension th
 
 https://developer.chrome.com/docs/ai/built-in
 
+Prerequisites:
+
+- If you can't get the Summarizer API Playground to work, then this extension won't work for you either
+- The YouTube video must have a transcript
+
 # ORIGINAL PROJECT: Tab Content Extractor
 
 Tab Content Extractor is a browser extension for Chrome and Edge that allows users to extract and save content from multiple tabs in various formats.
