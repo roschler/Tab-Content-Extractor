@@ -6,7 +6,7 @@ https://developer.chrome.com/docs/ai/built-in
 
 Prerequisites:
 
-- If you can't get the Summarizer API Playground to work, then this extension won't work for you either
+- If you can't get the Summarization API Playground to work, then this extension won't work for you either
 - The YouTube video must have a transcript
 
 # How To Use It
