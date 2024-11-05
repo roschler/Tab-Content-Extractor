@@ -105,6 +105,61 @@ const initializeApplication = async () => {
         }
         scheduleSummarization();
     });
+
+    // Ask the content script in the active tab
+    //  to grab the YouTube transcript.
+    // Find the active tab in the current window
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0].id) {
+            // Send a message directly to the content script in the active tab
+            chrome.tabs.sendMessage(tabs[0].id, { action: "grabTranscript", text: "Requesting video transcript." });
+        }
+    });
+
+    // Create a connection with the active tab.
+    document.addEventListener('DOMContentLoaded', () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0].id) {
+                // Connect to the content script in the active tab
+                const port = chrome.tabs.connect(tabs[0].id, { name: "popup-content-connection" });
+
+                // Listen for messages from the content script
+
+                console.log(`Connecting to active tab...`);
+
+                port.onMessage.addListener((message) => {
+                    console.log("Received from content script:", message);
+
+                    if (message.type === 'status') {
+                        // Show status messages in the summary area.
+                        output.textContent = message.text;
+                    } else if (message.type === 'transcriptUnavailable') {
+                        // The content script could not grab the transcript.
+                        output.textContent = message.text;
+
+                        console.log(message.text);
+                    } else if (message.type === 'transcriptGrabbed') {
+                        // We have received the text of the transcript.
+                        //  Put it in the input window to summarize the
+                        //  video.
+                        console.log(`Transcript received.  Length: ${message.text.length}`);
+
+                        // Put the transcript into the input area.
+                        inputTextArea.value = message.text;
+
+                        // Schedule summarization.
+                        scheduleSummarization();
+                    } else {
+                        console.log(`Unknown message type: ${message.type}`);
+                    }
+                });
+
+                // Optional: Send a message to grab the transcript.
+                port.postMessage({ action: "grabTranscript" });
+            }
+        });
+    });
+
 }
 
 // Start the application

@@ -1250,5 +1250,40 @@ async function getTranscript_async() {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "extractText") {
     sendResponse({ text: document.body.innerText });
+  } else {
+    console.log(`Unknown action received: ${request.action}`);
   }
 });
+
+// Listen for connections from the popup
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "popup-content-connection") {
+    console.log("Connected to popup");
+
+    // Start a long-running task upon receiving a "startTask" message
+    port.onMessage.addListener((message) => {
+      if (message.action === "grabTranscript") {
+
+        // Grab the current transcript and send it
+        //  back to the popup.
+        setTimeout(async () => {
+          const grabbedTranscriptObj =
+              await getTranscript_async();
+
+          if (grabbedTranscriptObj) {
+            const transcriptText =
+                grabbedTranscriptObj.getConcatenatedTextWithoutTimestamps();
+
+            // Give the popup the transcript text.
+            port.postMessage({ type: "transcriptGrabbed", text: transcriptText });
+          } else {
+            // Tell the popup we could not grab the transcript.
+            port.postMessage({ type: "transcriptUnavailable", text: "The transcript is unavailable." });
+          }
+        });
+      }
+    });
+  }
+});
+
+console.log('CONTENT SCRIPT LOADED.');
