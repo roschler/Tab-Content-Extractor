@@ -9,6 +9,10 @@ Prerequisites:
 - If you can't get the Summarizer API Playground to work, then this extension won't work for you either
 - The YouTube video must have a transcript
 
+# How To Use It
+
+- When you are on a YouTube video page, just click the extension button and it will automatically grab the video transcript text, plug it into the prompt text box, and initiate a summarization operation using the summarize  API.
+
 # ORIGINAL PROJECT: Tab Content Extractor
 
 Tab Content Extractor is a browser extension for Chrome and Edge that allows users to extract and save content from multiple tabs in various formats.
