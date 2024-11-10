@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save-pdf').addEventListener('click', () => handleAction('save-pdf'));
     document.getElementById('save-json').addEventListener('click', () => handleAction('save-json'));
     document.getElementById('save-html').addEventListener('click', () => handleAction('save-html'));
+    document.getElementById('summarize').addEventListener('click', () => handleAction('summarize'));
 
     const optionsDiv = document.querySelector('.options');
     optionsDiv.innerHTML += `
@@ -110,6 +111,8 @@ function processContents(contents, action, separateFiles, onlyLinks) {
     navigator.clipboard.writeText(allContents).then(() => {
       alert('Content copied to clipboard');
     });
+  } else if (action === 'summarize') {
+    alert('Summarize here.');
   } else {
     saveToFile(contents, action.split('-')[1], separateFiles, onlyLinks);
   }

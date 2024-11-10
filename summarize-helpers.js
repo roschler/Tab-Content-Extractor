@@ -1,3 +1,7 @@
+// This code is shared between the popups.  The code is focused
+//  around summarization tasks using the Chrome local summarize
+//  API.
+
 
 // Main script for YouTube video popup.
 
@@ -148,6 +152,8 @@ const createSummarizationSession = async (type, format, length, downloadProgress
  * If the API is unavailable or unsupported, it displays relevant dialogs.
  */
 const initializeApplication = async () => {
+    console.log('Initializing the summarizer application...');
+
     const summarizationApiAvailable = window.ai !== undefined && window.ai.summarizer !== undefined;
     if (!summarizationApiAvailable) {
         summarizationUnavailableDialog.showModal();
@@ -167,7 +173,7 @@ const initializeApplication = async () => {
     //  with an end of sentence character character.
     function appendPeriodIfNoEosChar(str) {
         const strTrimmed = str.trim();
-        
+
         return /[.!?]$/.test(strTrimmed) ? strTrimmed : strTrimmed + '.';
     }
 
@@ -216,12 +222,12 @@ const initializeApplication = async () => {
      *  operation.
      */
     async function doSummarize(
-            textToSummarize,
-            funcStatusMessage) {
+        textToSummarize,
+        funcStatusMessage) {
         if (typeof textToSummarize !== 'string' || textToSummarize.length < 0)
             throw new Error(`The textToSummarize input parameter is empty or invalid.`);
         if (typeof funcStatusMessage !== 'function')
-        	throw new Error(`The value in the funcStatusMessage parameter is not a function.`);
+            throw new Error(`The value in the funcStatusMessage parameter is not a function.`);
 
         const aryChunks =
             simpleChunkifyText(textToSummarize);
@@ -380,7 +386,4 @@ const initializeApplication = async () => {
 
 }
 
-// Start the application
-console.log(`Initializing the application.`);
-
-initializeApplication();
+setTimeout(initializeApplication, 1000);
