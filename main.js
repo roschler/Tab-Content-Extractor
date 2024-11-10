@@ -242,7 +242,7 @@ const initializeApplication = async () => {
                 const chunkSummary = await doSummarizeOneChunk(chunkText, i);
 
                 if (chunkSummary.length > 0) {
-                    arySummaries.push(appendPeriodIfNoEosChar(chunkSummary));
+                    arySummaries.push(appendPeriodIfNoEosChar(chunkSummary) + '\n');
                 }
 
                 funcStatusMessage(`Summarized chunk #${i}.  Number of words: ${chunkText.length}...\n`);
@@ -264,7 +264,7 @@ const initializeApplication = async () => {
             // Chunkify text to keep summarizations inside the LLM
             //  token limit.
             const arySummaries =
-                doSummarize(
+                await doSummarize(
                     inputTextArea.value,
                     (statusMsg) => {
                         output.textContent += statusMsg;
@@ -292,13 +292,13 @@ const initializeApplication = async () => {
 
                 // Summarize the summaries.
                 const aryDerivativeSummaries =
-                    doSummarize(
+                    await doSummarize(
                         summariesText,
                         (statusMsg) => {
                             output.textContent += statusMsg;
                         });
 
-                const superSummaryText = aryDerivativeSummaries.join(' ');
+                const superSummaryText = aryDerivativeSummaries.join('\n');
 
                 output.textContent += superSummaryText;
 
