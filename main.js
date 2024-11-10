@@ -204,6 +204,55 @@ const initializeApplication = async () => {
     }
 
     /**
+     * Summarize a text block.  Chunkify the text if necessary.
+     *
+     * @param {String} textToSummarize - The text to summarize.
+     * @param {Function} funcStatusMessage - A function that
+     *  will be called with status messages generated with
+     *  during this summarization operation.
+     *
+     * @return {String[]} - Returns an array containing
+     *  the summaries generated during the summarization
+     *  operation.
+     */
+    async function doSummarize(
+            textToSummarize,
+            funcStatusMessage) {
+        if (typeof textToSummarize !== 'string' || textToSummarize.length < 0)
+            throw new Error(`The textToSummarize input parameter is empty or invalid.`);
+        if (typeof funcStatusMessage !== 'function')
+        	throw new Error(`The value in the funcStatusMessage parameter is not a function.`);
+
+        const aryChunks =
+            simpleChunkifyText(textToSummarize);
+
+        console.info(`aryChunks object:`);
+        console.dir(aryChunks, {depth: null, colors: true});
+
+        funcStatusMessage(`Number of chunks to process: ${aryChunks.length}...\n`);
+
+        // This array will accumulate the summaries across chunks.
+        const arySummaries = [];
+
+        for (let i = 0; i < aryChunks.length; i++) {
+            const chunkText = appendPeriodIfNoEosChar(aryChunks[i]);
+
+            if (chunkText.length > 0) {
+                funcStatusMessage(`Summarizing chunk #${i}:\n${chunkText}\n\n`);
+                const chunkSummary = await doSummarizeOneChunk(chunkText, i);
+
+                if (chunkSummary.length > 0) {
+                    arySummaries.push(appendPeriodIfNoEosChar(chunkSummary));
+                }
+
+                funcStatusMessage(`Summarized chunk #${i}.  Number of words: ${chunkText.length}...\n`);
+            }
+        }
+
+        return arySummaries;
+    }
+
+    /**
      * Schedules the summarization process with a debounce delay.
      * Waits for the user to stop typing for 1 second before generating a summary.
      */
@@ -214,31 +263,12 @@ const initializeApplication = async () => {
 
             // Chunkify text to keep summarizations inside the LLM
             //  token limit.
-            const aryChunks =
-                simpleChunkifyText(inputTextArea.value);
-
-            console.info(`aryChunks object:`);
-            console.dir(aryChunks, {depth: null, colors: true});
-
-            output.textContent += `Number of chunks to process: ${aryChunks.length}...\n`
-
-            // This array will accumulate the summaries across chunks.
-            const arySummaries = [];
-
-            for (let i = 0; i < aryChunks.length; i++) {
-                const chunkText = appendPeriodIfNoEosChar(aryChunks[i]);
-
-                if (chunkText.length > 0) {
-                    console.log(`Summarizing chunk #${i}:\n${chunkText}\n\n`)
-                    const chunkSummary = await doSummarizeOneChunk(chunkText, i);
-
-                    if (chunkSummary.length > 0) {
-                        arySummaries.push(chunkSummary);
-                    }
-
-                    output.textContent += `Summarized chunk #${i}.  Number of words: ${chunkText.length}...\n`
-                }
-            }
+            const arySummaries =
+                doSummarize(
+                    inputTextArea.value,
+                    (statusMsg) => {
+                        output.textContent += statusMsg;
+                    });
 
             output.textContent = arySummaries.join(' ');
 
@@ -247,32 +277,32 @@ const initializeApplication = async () => {
             if (arySummaries.length > 1) {
                 const arySummaryOfTheSummaries = [];
 
-                // Now summarize the summaries.
+                // Now summarize the summaries.  Concatenate
+                //  the summary text.
                 for (let i = 0; i < arySummaries.length; i++) {
-                    const summaryText = appendPeriodIfNoEosChar(arySummaries[i]);
-
-                    if (summaryText.length > 0) {
-                        if (summaryText.length > 0) {
-                            arySummaryOfTheSummaries.push(summaryText);
-                        }
-                    }
+                    if (arySummaries[i].length > 0)
+                        arySummaryOfTheSummaries.push(arySummaries[i]);
                 }
 
                 const summariesText =
                     arySummaryOfTheSummaries.join(' ');
 
+                output.textContent +=
+                    '\n\n==== SUMMARY OF THE SUMMARIES ====\n\n';
+
                 // Summarize the summaries.
-                //
-                // TODO: Need to do a length check and chunkify the
-                //  summary if necessary.
-                const chunkSummary =
-                    await doSummarizeOneChunk(summariesText, 0);
+                const aryDerivativeSummaries =
+                    doSummarize(
+                        summariesText,
+                        (statusMsg) => {
+                            output.textContent += statusMsg;
+                        });
 
-                console.log(`Summarizing the summaries:\n${chunkSummary}\n\n`)
+                const superSummaryText = aryDerivativeSummaries.join(' ');
 
-                output.textContent =
-                    '\n\n==== SUMMARY OF THE SUMMARIES ====\n\n'
-                    + chunkSummary;
+                output.textContent += superSummaryText;
+
+                console.log(`Summary of the summaries:\n${superSummaryText}\n\n`)
             }
         }, 1000);
     }
