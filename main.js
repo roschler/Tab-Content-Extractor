@@ -20,6 +20,101 @@ const summarizationUnavailableDialog = document.querySelector('#summarization-un
 const output = document.querySelector('#output');
 
 /**
+ * Counts the number of space delimited words in a string.
+ */
+function countWords(str) {
+
+    if (typeof str !== 'string')
+        throw new Error(`Invalid str parameter.  Not a string.`);
+
+    return str.split(' ').length;
+}
+
+/**
+ * Splits the input text into chunks of up to a specified number of words,
+ * attempting not to split sentences when possible.
+ *
+ * If a sentence exceeds the maximum word limit, it will be split at the limit.
+ *
+ * @param {string} strText - The input text to be chunked.
+ * @param {number} [numWordsPerChunk] - The maximum number of words per chunk.
+ *
+ * NOTE: The default is set to 700 words because currently the Chrome
+ *  local LLM has a per-prompt limit of 1024 tokens.
+ *
+ * @returns {string[]} An array of text chunks.
+ * @throws {Error} Throws an error if strText is not a non-empty string or if numWordsPerChunk is not a positive integer.
+ */
+function simpleChunkifyText(strText, numWordsPerChunk = 700) {
+    // Validate input
+    if (typeof strText !== 'string' || strText.trim() === '') {
+        throw new Error("strText must be a non-empty string.");
+    }
+    if (!Number.isInteger(numWordsPerChunk) || numWordsPerChunk <= 0) {
+        throw new Error("numWordsPerChunk must be an integer greater than zero.");
+    }
+
+    // Split text into sentences (includes punctuation)
+    const sentenceRegex = /[^.!?]+[.!?]*/g;
+    const sentences = strText.match(sentenceRegex);
+
+    if (!sentences) return []; // Return an empty array if no sentences are found
+
+    const chunks = [];
+    let currentChunk = '';
+    let currentWordCount = 0;
+
+    for (let i = 0; i < sentences.length; i++) {
+        const sentence = sentences[i].trim();
+        const sentenceWords = sentence.split(/\s+/);
+        const sentenceWordCount = sentenceWords.length;
+
+        // If the sentence itself is longer than numWordsPerChunk, split it
+        if (sentenceWordCount > numWordsPerChunk) {
+            let wordsProcessed = 0;
+            while (wordsProcessed < sentenceWordCount) {
+                const wordsToAdd = sentenceWords.slice(wordsProcessed, wordsProcessed + numWordsPerChunk - currentWordCount);
+                currentChunk += (currentChunk ? ' ' : '') + wordsToAdd.join(' ');
+                currentWordCount += wordsToAdd.length;
+                wordsProcessed += wordsToAdd.length;
+
+                // If the current chunk reaches the limit, push it to chunks and reset
+                if (currentWordCount >= numWordsPerChunk) {
+                    console.log(`Adding chunk #(${chunks.length}).  Length in words: ${countWords(currentChunk)}`)
+                    chunks.push(currentChunk.trim());
+                    currentChunk = '';
+                    currentWordCount = 0;
+                }
+            }
+            continue;
+        }
+
+        // Check if adding this sentence exceeds the word limit
+        if (currentWordCount + sentenceWordCount > numWordsPerChunk) {
+            // Push the current chunk to chunks and start a new chunk
+            if (currentChunk) {
+                console.log(`Adding chunk #(${chunks.length}).  Length in words: ${countWords(currentChunk)}`)
+                chunks.push(currentChunk.trim());
+            }
+            currentChunk = sentence;
+            currentWordCount = sentenceWordCount;
+        } else {
+            // Add the sentence to the current chunk
+            currentChunk += (currentChunk ? ' ' : '') + sentence;
+            currentWordCount += sentenceWordCount;
+        }
+    }
+
+    // Add any remaining text in the current chunk
+    if (currentChunk) {
+        console.log(`Adding chunk #(${chunks.length}).  Length in words: ${countWords(currentChunk)}`)
+        chunks.push(currentChunk.trim());
+    }
+
+    return chunks;
+}
+
+/**
  * Creates a summarization session. Downloads the model if necessary.
  *
  * @param {string} type - Type of summarization (e.g., 'short', 'detailed').
@@ -67,6 +162,47 @@ const initializeApplication = async () => {
 
     let timeout;
 
+    // This function appends a period (".")
+    //  to a string, but only if it does not already end
+    //  with an end of sentence character character.
+    function appendPeriodIfNoEosChar(str) {
+        const strTrimmed = str.trim();
+        
+        return /[.!?]$/.test(strTrimmed) ? strTrimmed : strTrimmed + '.';
+    }
+
+    /**
+     * Summarize one chunk of text.
+     *
+     * @return {Promise<string>} - Returns the summary for the
+     *  chunk of text.
+     */
+    async function doSummarizeOneChunk(chunkText, chunkNum) {
+        if (typeof chunkText !== 'string' || chunkText.length < 1)
+            throw new Error(`The chunkText parameter is invalid or empty.`);
+
+        if (!Number.isInteger(chunkNum) || chunkNum < 0)
+            throw new Error(`The chunkNum parameter must be an integer greater than or equal to 0.`);
+
+        // Create a summarization session.
+        const session = await createSummarizationSession(
+            summaryTypeSelect.value,
+            summaryFormatSelect.value,
+            summaryLengthSelect.value,
+        );
+
+        let chunkSummary = '';
+
+        if (chunkText.length > 0) {
+            console.log(`Summarizing chunk #${chunkNum}:\n${chunkText}\n\n`)
+            chunkSummary = await session.summarize(chunkText);
+        }
+
+        session.destroy();
+
+        return chunkSummary;
+    }
+
     /**
      * Schedules the summarization process with a debounce delay.
      * Waits for the user to stop typing for 1 second before generating a summary.
@@ -74,17 +210,70 @@ const initializeApplication = async () => {
     function scheduleSummarization() {
         clearTimeout(timeout);
         timeout = setTimeout(async () => {
-            output.textContent = 'Generating summary...';
-            const session = await createSummarizationSession(
-                summaryTypeSelect.value,
-                summaryFormatSelect.value,
-                summaryLengthSelect.value,
-            );
+            output.textContent = 'Generating summary...\n';
 
-            const summary = await session.summarize(inputTextArea.value);
+            // Chunkify text to keep summarizations inside the LLM
+            //  token limit.
+            const aryChunks =
+                simpleChunkifyText(inputTextArea.value);
 
-            session.destroy();
-            output.textContent = summary;
+            console.info(`aryChunks object:`);
+            console.dir(aryChunks, {depth: null, colors: true});
+
+            output.textContent += `Number of chunks to process: ${aryChunks.length}...\n`
+
+            // This array will accumulate the summaries across chunks.
+            const arySummaries = [];
+
+            for (let i = 0; i < aryChunks.length; i++) {
+                const chunkText = appendPeriodIfNoEosChar(aryChunks[i]);
+
+                if (chunkText.length > 0) {
+                    console.log(`Summarizing chunk #${i}:\n${chunkText}\n\n`)
+                    const chunkSummary = await doSummarizeOneChunk(chunkText, i);
+
+                    if (chunkSummary.length > 0) {
+                        arySummaries.push(chunkSummary);
+                    }
+
+                    output.textContent += `Summarized chunk #${i}.  Number of words: ${chunkText.length}...\n`
+                }
+            }
+
+            output.textContent = arySummaries.join(' ');
+
+            // No point in summarizing a single chunk summary.
+            //  Check for a length greater than 1.
+            if (arySummaries.length > 1) {
+                const arySummaryOfTheSummaries = [];
+
+                // Now summarize the summaries.
+                for (let i = 0; i < arySummaries.length; i++) {
+                    const summaryText = appendPeriodIfNoEosChar(arySummaries[i]);
+
+                    if (summaryText.length > 0) {
+                        if (summaryText.length > 0) {
+                            arySummaryOfTheSummaries.push(summaryText);
+                        }
+                    }
+                }
+
+                const summariesText =
+                    arySummaryOfTheSummaries.join(' ');
+
+                // Summarize the summaries.
+                //
+                // TODO: Need to do a length check and chunkify the
+                //  summary if necessary.
+                const chunkSummary =
+                    await doSummarizeOneChunk(summariesText, 0);
+
+                console.log(`Summarizing the summaries:\n${chunkSummary}\n\n`)
+
+                output.textContent =
+                    '\n\n==== SUMMARY OF THE SUMMARIES ====\n\n'
+                    + chunkSummary;
+            }
         }, 1000);
     }
 
@@ -144,7 +333,6 @@ const initializeApplication = async () => {
                         //  video.
                         console.log(`Transcript received.  Length: ${message.text.length}`);
 
-                        // Put the transcript into the input area.
                         inputTextArea.value = message.text;
 
                         // Schedule summarization.
